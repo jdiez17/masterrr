@@ -30,6 +30,9 @@ func stopHandler(r *http.Request) (interface{}, HTTPError) {
 		return nil, NewHTTPError("ID argument not given.", 400)
 	}
 	id := parts[2]
+	if len(id) < 30 {
+		return nil, NewHTTPError("Invalid ID", 400)
+	}
 
 	if err := stopContainer(id); err != nil {
 		return nil, err
@@ -43,6 +46,9 @@ func statusHandler(r *http.Request) (interface{}, HTTPError) {
 		return nil, NewHTTPError("ID argument not given.", 400)
 	}
 	id := parts[2]
+	if len(id) < 30 {
+		return nil, NewHTTPError("Invalid ID", 400)
+	}
 
 	return StatusResponse{ContainerID: id, Status: testLiveness(id, false).String()}, nil
 }

@@ -21,6 +21,7 @@ func jsonM(f func(*http.Request) (interface{}, HTTPError)) func(http.ResponseWri
 		res, err := f(req)
 		if err != nil {
 			err.Write(writer)
+			return
 		}
 
 		out, err2 := json.Marshal(res)

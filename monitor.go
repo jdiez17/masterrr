@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"sync"
 	"time"
+	"io/ioutil"
 )
 
 // Prime numbers so they don't coincide
@@ -50,7 +51,8 @@ func testLiveness(id string, destructive bool) ContainerStatus {
 	}
 
 	ip := info.NetworkSettings.IPAddress
-	url := "http://" + ip + ":" + servicePort + "/control/ping"
+	url := "http://" + ip + ":" + servicePort + "/control/state/" + id
+	log.Println(url)
 	client := http.Client{
 		Timeout: timeout,
 	}
@@ -75,6 +77,20 @@ func testLiveness(id string, destructive bool) ContainerStatus {
 		log.Println("WARN: Liveness: check for", id[:16], "failed with:", err)
 		stop = true
 		return DEAD
+	}
+
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		log.Println("WARN: Liveness: check for", id[:16], "failed with:", err)
+		stop = true
+		return DEAD
+	}
+
+	if string(body) == "disconnected" {
+		stop = true
+		log.Println("INFO: Liveness: client d/c, killing", id[:16])
+		return NOT_RUNNING
 	}
 
 	log.Println("INFO: Liveness: check for container", id[:16], " OK")
