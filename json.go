@@ -2,22 +2,25 @@ package main
 
 import (
 	"net/http"
+	"log"
 	"encoding/json"
+	"runtime/debug"
 )
 
 func jsonM(f func(*http.Request) (interface{}, HTTPError)) func(http.ResponseWriter, *http.Request)  {
 	return func(writer http.ResponseWriter, req *http.Request) {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Println("PANIC:", r)
+				debug.PrintStack()
+				NewHTTPError("Recovered from panic.", 500).Write(writer)
+			}
+		}()
+
 		writer.Header().Set("Content-Type", "application/json")
 		res, err := f(req)
 		if err != nil {
-			out, _ := json.Marshal(StatusMessageResponse{
-				Message: err.Error(),
-				Success: false,
-			})
-
-			writer.WriteHeader(err.Code())
-			writer.Write(out)
-			return
+			err.Write(writer)
 		}
 
 		out, err2 := json.Marshal(res)
