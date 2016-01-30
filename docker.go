@@ -1,51 +1,35 @@
 package main
 
 import (
-	"log"
 	dockerc "github.com/samalba/dockerclient"
-	"runtime/debug"
+	"log"
 )
 
-func startContainer(image string) (string, HTTPError) {
-	id, err := State.Docker.CreateContainer(&dockerc.ContainerConfig{
-		Image: image,
-		NetworkDisabled: false,
-	}, "", nil)
-	if err != nil {
-		log.Println("ERR: CreateContainer:", err)
-		return "", NewHTTPError("Unable to create container.", 500)
-	}
+var docker *dockerc.DockerClient = nil
 
-	err = State.Docker.StartContainer(id, nil)
-	if err != nil {
-		log.Println("ERR: StartContainer:", err)
-		return "", NewHTTPError("Unable to start container.", 500)
-	}
-	log.Println("INFO: Container", id[:16], "started.")
-
-	return id, nil
+type containerInfo struct {
+	ID, IP string
 }
 
-func stopContainer(id string) HTTPError {
-	err := State.Docker.KillContainer(id, "SIGKILL")
-	if err != nil {
-		log.Println("WARN: KillContainer:", err)
-		return NewHTTPError("Unable to kill container.", 500)
-	}
-	log.Println("INFO: Container", id[:16], "killed.")
+func dockerConnect() {
+	var err error
 
-	err = State.Docker.RemoveContainer(id, true, false)
+	// Connect to the Docker daemon
+	docker, err = dockerc.NewDockerClient("unix:////var/run/docker.sock", nil)
 	if err != nil {
-		log.Println("WARN: RemoveContainer:", err)
-		return NewHTTPError("Unable to remove container.", 500)
+		log.Fatal("ERR: Docker says: ", err)
 	}
-	log.Println("INFO: Container", id[:16], "removed.")
 
-	return nil
+	// Ensure we're actually connected
+	info, err := docker.Info()
+	if err != nil {
+		log.Fatal("ERR: Docker says: ", err)
+	}
+	log.Println("Running at", info.Name, "on", info.OperatingSystem)
 }
 
 func getContainerIP(id string) (string, HTTPError) {
-	info, err := State.Docker.InspectContainer(id)
+	info, err := docker.InspectContainer(id)
 	if err != nil {
 		log.Println("ERR: InspectContainer:", err)
 		return "", NewHTTPError("Unable to inspect container.", 500)
@@ -54,4 +38,56 @@ func getContainerIP(id string) (string, HTTPError) {
 	log.Println("INFO: IP address:", ip)
 
 	return ip, nil
+}
+
+func startContainer(image string) (*containerInfo, HTTPError) {
+	id, err := docker.CreateContainer(&dockerc.ContainerConfig{
+		Image:           image,
+		NetworkDisabled: false,
+	}, "", nil)
+	if err != nil {
+		log.Println("ERR: CreateContainer:", err)
+		return nil, NewHTTPError("Unable to create container.", 500)
+	}
+
+	err = docker.StartContainer(id, nil)
+	if err != nil {
+		log.Println("ERR: StartContainer:", err)
+		return nil, NewHTTPError("Unable to start container.", 500)
+	}
+	log.Println("INFO: Container", id[:16], "started.")
+
+	ip, err2 := getContainerIP(id)
+	if err2 != nil {
+		stopContainer(id)
+		return nil, err2
+	}
+
+	// Add to the list of containers managed by this process
+	if err := State.AddContainer(id); err != nil {
+		stopContainer(id)
+		return nil, NewHTTPError("Unable to add container to Redis.", 500)
+	}
+
+	return &containerInfo{ID: id, IP: ip}, nil
+}
+
+func stopContainer(id string) HTTPError {
+	State.RemoveContainer(id)
+
+	err := docker.KillContainer(id, "SIGKILL")
+	if err != nil {
+		log.Println("WARN: KillContainer:", err)
+		return NewHTTPError("Unable to kill container.", 500)
+	}
+	log.Println("INFO: Container", id[:16], "killed.")
+
+	err = docker.RemoveContainer(id, true, false)
+	if err != nil {
+		log.Println("WARN: RemoveContainer:", err)
+		return NewHTTPError("Unable to remove container.", 500)
+	}
+	log.Println("INFO: Container", id[:16], "removed.")
+
+	return nil
 }

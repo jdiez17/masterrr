@@ -1,7 +1,7 @@
 package main
 
 type StartResponse struct {
-	Endpoint string
+	Endpoint    string
 	ContainerID string
 }
 

@@ -13,25 +13,25 @@ type HTTPError interface {
 
 type httpError struct {
 	message string
-	code int
+	code    int
 }
 
 func NewHTTPError(message string, code int) *httpError {
 	return &httpError{
 		message: message,
-		code: code,
+		code:    code,
 	}
 }
 
-func(err *httpError) Error() string {
+func (err *httpError) Error() string {
 	return err.message
 }
 
-func(err *httpError) Code() int {
+func (err *httpError) Code() int {
 	return err.code
 }
 
-func(err *httpError) Write(w http.ResponseWriter) {
+func (err *httpError) Write(w http.ResponseWriter) {
 	out, _ := json.Marshal(StatusMessageResponse{
 		Message: err.Error(),
 		Success: false,

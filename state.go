@@ -1,43 +1,26 @@
 package main
 
 import (
-	"log"
-	dockerc "github.com/samalba/dockerclient"
-	"gopkg.in/redis.v3"
 	"errors"
+	"gopkg.in/redis.v3"
+	"log"
 )
 
 const id = 4242424242
 
 type state struct {
-	Docker *dockerc.DockerClient
 	Redis *redis.Client
-	ID int
+	ID    int
 }
 
 var State state
 
-func(s *state) Init() {
-	var err error
-
-	// Connect to the Docker daemon
-	s.Docker, err = dockerc.NewDockerClient("unix:////var/run/docker.sock", nil)
-	if err != nil {
-		log.Fatal("ERR: Docker says: ", err)
-	}
-
-	// Ensure we're actually connected
-	info, err := s.Docker.Info()
-	if err != nil {
-		log.Fatal("ERR: Docker says: ", err)
-	}
-	log.Println("Running at", info.Name, "on", info.OperatingSystem)
-
+func (s *state) Init() {
 	// Connect to Redis
 	s.Redis = redis.NewClient(&redis.Options{
-		Addr: "localhost:6379",
+		Addr:     "localhost:6379",
 		Password: "",
-		DB: 0,
+		DB:       0,
 	})
 
 	pong, err := s.Redis.Ping().Result()
@@ -50,15 +33,13 @@ func(s *state) Init() {
 	s.ID = id
 }
 
-func(s *state) Destroy() {
+func (s *state) Destroy() {
 	s.Redis.Close()
 	s.Redis = nil
-	s.Docker = nil
 }
 
-// TODO: Refactor below into redis.go
-func(s *state) AddContainer(id string, ip string) error {
-	res := s.Redis.SAdd(key("monitored"), id + ":" + ip)
+func (s *state) AddContainer(id string) error {
+	res := s.Redis.SAdd(key("monitored"), id)
 	if res == nil {
 		State.Destroy()
 		State.Init()
@@ -76,8 +57,8 @@ func(s *state) AddContainer(id string, ip string) error {
 	return err
 }
 
-func(s *state) RemoveContainer(id string, ip string) error {
-	err := s.Redis.SRem(key("monitored"), id + ":" + ip).Err()
+func (s *state) RemoveContainer(id string) error {
+	err := s.Redis.SRem(key("monitored"), id).Err()
 	if err != nil {
 		log.Println("removecontainer err:", err)
 		State.Destroy()
@@ -88,7 +69,7 @@ func(s *state) RemoveContainer(id string, ip string) error {
 	return err
 }
 
-func(s *state) MonitoredContainers() ([]string, error) {
+func (s *state) MonitoredContainers() ([]string, error) {
 	res := s.Redis.SMembers(key("monitored"))
 	if res == nil {
 		State.Destroy()

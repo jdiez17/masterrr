@@ -1,13 +1,13 @@
 package main
 
 import (
-	"net/http"
-	"log"
 	"encoding/json"
+	"log"
+	"net/http"
 	"runtime/debug"
 )
 
-func jsonM(f func(*http.Request) (interface{}, HTTPError)) func(http.ResponseWriter, *http.Request)  {
+func jsonM(f func(*http.Request) (interface{}, HTTPError)) func(http.ResponseWriter, *http.Request) {
 	return func(writer http.ResponseWriter, req *http.Request) {
 		defer func() {
 			if r := recover(); r != nil {
