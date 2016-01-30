@@ -20,10 +20,10 @@ func setPending(id string, val bool) {
 	mutex.Unlock()
 }
 
-func testLiveness(id string) {
+func testLiveness(id string, destructive bool) ContainerStatus {
 	stop := false
 	defer func() {
-		if stop {
+		if stop && destructive {
 			stopContainer(id)
 		}
 	}()
@@ -32,21 +32,21 @@ func testLiveness(id string) {
 	info, err := docker.InspectContainer(id)
 	if err != nil {
 		// It's kill, remove it from our state
-		log.Println("WARN: Removing dead container", id[:16])
+		log.Println("WARN: container", id[:16], "is dead.")
 		stop = true
-		return
+		return DEAD
 	}
 	if !info.State.Running {
 		// Don't want to keep dead containers around
-		log.Println("WARN: Removing non-running container", id[:16])
+		log.Println("WARN: container", id[:16], "is not running.")
 		stop = true
-		return
+		return NOT_RUNNING
 	}
 
 	// Allow the service to boot up - don't run liveness check for a minute
-	if time.Since(info.State.StartedAt) < time.Minute {
+	if time.Since(info.State.StartedAt) < time.Minute && destructive {
 		log.Println("INFO: Liveness: Skipping container", id[:16], "because it was launched recently.")
-		return
+		return STARTING
 	}
 
 	ip := info.NetworkSettings.IPAddress
@@ -57,7 +57,7 @@ func testLiveness(id string) {
 
 	if pending[id] {
 		log.Println("INFO: Liveness: check for", id[:16], "pending. Skipping.")
-		return
+		return RUNNING
 	}
 
 	setPending(id, true)
@@ -68,16 +68,17 @@ func testLiveness(id string) {
 			log.Println("WARN: Liveness: check for container", id[:16], "returned code:", res.StatusCode, "(err", err, ")")
 
 			stop = true
-			return
+			return DEAD
 		}
 	}
 	if err != nil {
 		log.Println("WARN: Liveness: check for", id[:16], "failed with:", err)
 		stop = true
-		return
+		return DEAD
 	}
 
 	log.Println("INFO: Liveness: check for container", id[:16], " OK")
+	return READY
 }
 
 func monitor() {
@@ -91,7 +92,7 @@ func monitor() {
 		}
 
 		for _, container := range containers {
-			go testLiveness(container)
+			go testLiveness(container, true)
 		}
 	}
 }

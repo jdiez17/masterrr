@@ -44,6 +44,7 @@ func startContainer(image string) (*containerInfo, HTTPError) {
 	id, err := docker.CreateContainer(&dockerc.ContainerConfig{
 		Image:           image,
 		NetworkDisabled: false,
+		Labels: map[string]string{"role": "worker"},
 	}, "", nil)
 	if err != nil {
 		log.Println("ERR: CreateContainer:", err)

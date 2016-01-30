@@ -37,13 +37,24 @@ func stopHandler(r *http.Request) (interface{}, HTTPError) {
 	return GenericResponse{Success: true}, nil
 }
 
+func statusHandler(r *http.Request) (interface{}, HTTPError) {
+	parts := strings.Split(r.URL.Path, "/")
+	if len(parts) != 3 {
+		return nil, NewHTTPError("ID argument not given.", 400)
+	}
+	id := parts[2]
+
+	return StatusResponse{ContainerID: id, Status: testLiveness(id, false).String()}, nil
+}
+
 func main() {
 	dockerConnect()
 	State.Init()
 	go monitor()
 
-	http.HandleFunc("/start/", jsonM(startHandler))
-	http.HandleFunc("/stop/", jsonM(stopHandler))
+	http.HandleFunc("/start/", allowCrossOrigin(jsonM(startHandler)))
+	http.HandleFunc("/stop/",  allowCrossOrigin(jsonM(stopHandler)))
+	http.HandleFunc("/status/",allowCrossOrigin(jsonM(statusHandler)))
 	log.Println("masterrr: listening on", ":"+port)
 	http.ListenAndServe(":"+port, nil)
 }
