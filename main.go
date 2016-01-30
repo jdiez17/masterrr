@@ -4,9 +4,6 @@ import (
 	"net/http"
 	"log"
 	"strings"
-	"os"
-	"os/signal"
-	"runtime/debug"
 )
 
 const servicePort = "8081"
@@ -27,8 +24,8 @@ func startHandler(r *http.Request) (interface{}, HTTPError) {
 
 	// Add to the list of containers managed by this process
 	if err := State.AddContainer(id, ip); err != nil {
-		return nil, NewHTTPError("Unable to add container to Redis.", 500)
 		stopContainer(id)
+		return nil, NewHTTPError("Unable to add container to Redis.", 500)
 	}
 
 	return StartResponse{
@@ -63,25 +60,6 @@ func stopHandler(r *http.Request) (interface{}, HTTPError) {
 func main() {
 	State.Init()
 	go monitor()
-
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, os.Interrupt)
-	go func() {
-		for range c {
-			State.Destroy()
-			os.Exit(0)
-		}
-	}()
-
-	defer func() {
-		if r := recover(); r != nil {
-			log.Println("PANIC:", r)
-			debug.PrintStack()
-
-			State.Destroy()
-			os.Exit(0)
-		}
-	}()
 
 	http.HandleFunc("/start/", jsonM(startHandler))
 	http.HandleFunc("/stop/", jsonM(stopHandler))

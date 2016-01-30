@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	dockerc "github.com/samalba/dockerclient"
+	"runtime/debug"
 )
 
 func startContainer(image string) (string, HTTPError) {
