@@ -13,6 +13,7 @@ const servicePort = "8081"
 const port = "8082"
 const image = "jdiez/dockerrr"
 
+// Rate limit by ip!
 func startHandler(r *http.Request) (interface{}, HTTPError) {
 	// Spin up a container
 	id, err := startContainer(image)
