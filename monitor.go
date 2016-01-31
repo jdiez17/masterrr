@@ -37,17 +37,16 @@ func testLiveness(id string, destructive bool) ContainerStatus {
 		stop = true
 		return DEAD
 	}
+	// Allow the service to boot up - don't run liveness check for a minute
+	if time.Since(info.State.StartedAt) < time.Minute && destructive {
+		log.Println("INFO: Liveness: Skipping container", id[:16], "because it was launched recently.")
+		return STARTING
+	}
 	if !info.State.Running {
 		// Don't want to keep dead containers around
 		log.Println("WARN: container", id[:16], "is not running.")
 		stop = true
 		return NOT_RUNNING
-	}
-
-	// Allow the service to boot up - don't run liveness check for a minute
-	if time.Since(info.State.StartedAt) < time.Minute && destructive {
-		log.Println("INFO: Liveness: Skipping container", id[:16], "because it was launched recently.")
-		return STARTING
 	}
 
 	ip := info.NetworkSettings.IPAddress
