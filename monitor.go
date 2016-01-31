@@ -11,6 +11,7 @@ import (
 // Prime numbers so they don't coincide
 const interval = 7 * time.Second
 const timeout = 13 * time.Second
+const gracePeriod = 20 * time.Second
 
 var pending map[string]bool
 var mutex sync.Mutex
@@ -38,7 +39,7 @@ func testLiveness(id string, destructive bool) ContainerStatus {
 		return DEAD
 	}
 	// Allow the service to boot up - don't run liveness check for a minute
-	if time.Since(info.State.StartedAt) < time.Minute && destructive {
+	if time.Since(info.State.StartedAt) < gracePeriod && destructive {
 		log.Println("INFO: Liveness: Skipping container", id[:16], "because it was launched recently.")
 		return STARTING
 	}
