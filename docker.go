@@ -11,6 +11,11 @@ type containerInfo struct {
 	ID, IP string
 }
 
+// TODO: config
+const memory = 100 * 1024 * 1024
+const kMemory = 1 * 1024
+const files = 10000
+
 func dockerConnect() {
 	var err error
 
@@ -52,13 +57,13 @@ func startContainer(image string) (*containerInfo, HTTPError) {
 	}
 
 	err = docker.StartContainer(id, &dockerc.HostConfig{
-		Memory: 100 * 1024 * 1024,
-		KernelMemory: 1 * 1024,
+		Memory: memory,
+		KernelMemory: kMemory,
 		Ulimits: []dockerc.Ulimit{
 			dockerc.Ulimit{
 				Name: "nofile",
-				Soft: 5000,
-				Hard: 5000,
+				Soft: files,
+				Hard: files,
 			},
 		},
 	})
