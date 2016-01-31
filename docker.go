@@ -51,7 +51,16 @@ func startContainer(image string) (*containerInfo, HTTPError) {
 		return nil, NewHTTPError("Unable to create container.", 500)
 	}
 
-	err = docker.StartContainer(id, nil)
+	err = docker.StartContainer(id, &dockerc.HostConfig{
+		Memory: 100 * 1024 * 1024,
+		Ulimits: []dockerc.Ulimit{
+			dockerc.Ulimit{
+				Name: "nproc",
+				Soft: 64,
+				Hard: 64,
+			},
+		},
+	})
 	if err != nil {
 		log.Println("ERR: StartContainer:", err)
 		return nil, NewHTTPError("Unable to start container.", 500)
