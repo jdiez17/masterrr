@@ -53,13 +53,8 @@ func startContainer(image string) (*containerInfo, HTTPError) {
 
 	err = docker.StartContainer(id, &dockerc.HostConfig{
 		Memory: 100 * 1024 * 1024,
-		Ulimits: []dockerc.Ulimit{
-			dockerc.Ulimit{
-				Name: "nproc",
-				Soft: 64,
-				Hard: 64,
-			},
-		},
+		KernelMemory: 1 * 1024,
+		CpuQuota: 50000,
 	})
 	if err != nil {
 		log.Println("ERR: StartContainer:", err)
