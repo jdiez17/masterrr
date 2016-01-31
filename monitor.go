@@ -52,7 +52,6 @@ func testLiveness(id string, destructive bool) ContainerStatus {
 
 	ip := info.NetworkSettings.IPAddress
 	url := "http://" + ip + ":" + servicePort + "/control/state/" + id
-	log.Println(url)
 	client := http.Client{
 		Timeout: timeout,
 	}
