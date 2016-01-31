@@ -18,7 +18,7 @@ var State state
 func (s *state) Init() {
 	// Connect to Redis
 	s.Redis = redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379",
+		Addr:     "redis:6379",
 		Password: "",
 		DB:       0,
 	})
