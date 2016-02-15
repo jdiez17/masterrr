@@ -13,7 +13,7 @@ type containerInfo struct {
 
 // TODO: config
 const memory = 100 * 1024 * 1024
-const kMemory = 1 * 1024
+const kMemory = 4 * 1024
 const files = 10000
 
 func dockerConnect() {
